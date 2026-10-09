@@ -1174,4 +1174,726 @@ We are still trying to find out the source of our  problem with QDC channels/cal
     - Run finished: **19-Aug-2026 10:08:28**
     - Number of events: **1482805**
     - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
-    - ** Observ ation**: TimePix is record
+    - ** Observ ation**: TimePix is recorded for 600 minutes, 10 hours, so it doesn't cover the entire run because we thought we would arrive earlier :D 
+
+:::info 
+CAL12 needs to be calibrated! (because we have change the qdc channel of it to qdc ch17.)
+:::
+
+    
+
+
+
+    
+
+- Run **1787131925** : **3 GeV beam, collimators at beam_ref, TARGET; YES, <GOAL: To investigate low Z material - Graphite(3cm) with TimePix.**
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **107897** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **4.001** bar, events **78658**, gas **CO2**
+    - XCET48: pressure **2.002** bar, events **5658**, gas **CO2**
+    - Run started: **18-Aug-2026 11:32**
+    - Run finished: ** 18-Aug-2026 14:00:45**
+    - Number of events: **480878**
+ 
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: ~3 cm
+    - **Observation**: over here we are having problem with RCDApp! We've decided to stop the run and restart the system to see if they will disappear. TimePix is continuing to have the data, it has GPI01 and GPIO2 connected, GPIO1 is connected to EVTTRG 
+    
+    
+- Run **1787143237** : **3 GeV beam, collimators at beam_ref, TARGET; YES, <GOAL: To investigate low Z material - Graphite(3cm) with TimePix.**
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **107897** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **4.001** bar, events **78658**, gas **CO2**
+    - XCET48: pressure **2.002** bar, events **5658**, gas **CO2**
+    - Run started: **19-Aug-2026 14:40:37**
+    - Run finished: ** 19-Aug-2026 21:16:04**
+    - Number of events: **1334353**
+ 
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: ~3 cm
+    - **Observation**: everything seems to be working out great (knock on wood) The TimePix data that covers this information is 757 to 1152.  We will put tungsten at 3 cm just to see that probably we cannot build the pi0s :/. 
+    
+- Run **1787168532** : **3 GeV beam, collimators at beam_ref, TARGET; YES, <GOAL: To investigate low Z material - tungsten(3cm) with TimePix.**
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **107897** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **4.001** bar, events **78658**, gas **CO2**
+    - XCET48: pressure **2.002** bar, events **5658**, gas **CO2**
+    - Run started: **19-Aug-2026 21:42**
+    - Run finished: ** 19-Aug-2026 22:38**
+    - Number of events: **210780**
+ 
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: ~3 cm
+    - **Observation**: everything looks okay! the TimePix data that covers this data is from 1174 to 1219. It is shorter than the data. The Timepix monitor become so busy after the 3 cm tungsten.
+
+:::info
+we will goo see theee moooon
+:::
+    
+  
+:::info
+we saw it, it was so beautifullll    
+:::
+  
+- Run **1787172822** : **3 GeV beam, collimators at beam_ref, TARGET; YES, <GOAL: To investigate low Z material - GRaphite(1cm) with TimePix.**
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **107897** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **4.001** bar, events **78658**, gas **CO2**
+    - XCET48: pressure **2.002** bar, events **5658**, gas **CO2**
+    - Run started: **19-Aug-2026 22:53:42  **
+    - Run finished: ** 20-Aug-2026  09:55:54  **
+    - Number of events: ** 09:55:54**
+ 
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: ~3 cm
+    - **Observation**: The TimePix data that covers this run starts with the 1220. Unfortunately it  seems TimePix stopped recording separate txt files 1313 at  00:34. But that files seems huge, we are not sure if it is corrupted or not. Also bad news on the calorimeters. 
+![](https://codimd.web.cern.ch/uploads/upload_0e2552db5546ad99d69d4b30b51b5eac.png)
+
+ch1 and ch16 is definitely problematic. Interesting part is that it is the same calorimeter, even at the new channel. We've went to talk to mustafa, he has suggested it looks like a memory issue, he asked if we reset in between. We will share the code with him, and we've got new qdc to test. Sad! We'll copy this event to next day too. 
+    
+    
+:::info
+we are aiming to start a long run with 1 cm C and go home to sleeeep
+:::
+    
+## 2026.08.18
+    
+-->Continuation from last night:
+    
+:::success
+ - We have corrected alignment of FS0, FS1 and center of CALs and their distance between each other. In previous positioning of CALs, laser were passing through the CAL14 and CAL18 but not the center of the gap. So, we have changed the CAL positions and then DESY table position as well.
+ - We have marked positions of FS PMT base on the bosch profiles.
+ - We have marked the wall vertically and wrote BL4S 2026.
+:::    
+    
+![](https://codimd.web.cern.ch/uploads/upload_f6cdd55ee7a7d7e758635c7e7dfcfda4.jpeg)
+   ---------------------------------- 
+![](https://codimd.web.cern.ch/uploads/upload_46fa6bfffeaaeb1faee6db8c54561601.jpeg)
+    
+    
+:::info    
+- We have placed the TimePix in front of the beam and got 3 spills. There is no event on TimePix, so we will try again tomorrow. We (Aniket, Abhay, Berare and Seyma) are so tired to debug this thing now and also not 100% sure if the Katherine box and TimePix radiation hard or not. Needs to be check with TimePix people.
+:::    
+    
+ ![](https://codimd.web.cern.ch/uploads/upload_c2aa09f9720391937122c3a332b60fac.jpeg)
+   
+    
+:::info
+We have placed to 3 cm C target and we have ~3 cm gap between CALs.    
+:::    
+   - Run **1787004129** : **3 GeV beam, collimators at beam_ref, TARGET; YES, <GOAL: 3 cm C target with ~2.8 - 3 cm gap between CALs.**
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **107907** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **3.994** bar, events **79054**, gas **CO2**
+    - XCET48: pressure **1.999** bar, events **5822**, gas **CO2**
+    - Run started: **00:02, 18.08.2026**
+    - Run finished: **10:02, 18.08.2026**
+    - Number of events: **1539159**
+    - Target position: **44 & 45 cm bosh profile**
+    - Target material thickness: **C / 30 mm**
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: 3 cm
+    - **Observation**:
+
+    
+:::info
+We removed the target to measure the background.
+:::
+- Run **1787045879** : **3 GeV beam, collimators at beam_ref, TARGET; NO, <GOAL: BACKGROUND RUN - NO TARGET, No TimePix**
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **102651** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **3.994** bar, events **74531**, gas **CO2**
+    - XCET48: pressure **1.999** bar, events **5149**, gas **CO2**
+    - Run started: **11:37, 18.08.2026**
+    - Run finished: **11:57,18.08.2026**
+    - Number of events: **50507**
+ 
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: 3 cm
+    - **Observation**:LOOKS NORMAL. CAL2 AND CAL12 HAS HIGHER BACKGROUND ~4K COUNTS, AS EXPECTED. 
+
+- Run **1787049075** : **3 GeV beam, collimators at beam_ref, TARGET; YES, <GOAL: To investigate higher Z material - Tungsten(2cm) **
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **108025** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **3.994** bar, events **78279**, gas **CO2**
+    - XCET48: pressure **1.999** bar, events **5471**, gas **CO2**
+    - Run started: **12:31, 18.08.2026**
+    - Run finished: **13:47,18.08.2026 **
+    - Number of events: **274068**
+ 
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: 3 cm
+    - **Observation**:stopped the run because CH10 QDC graph is suspicious
+:::info
+It is doing the same behavour as seen earlier in the QDC log graph 
+:::
+:::info
+We changed the channel 10 for calorimeter 12 to channel 16 and it seems to work.
+:::
+    
+| From           | To              | Distance |
+| -------------- | --------------- | -------- |
+| Bottom of CAL9 | Bottom of CAL19 | 21.3 mm  |
+| Top of CAL9    | Top of CAL19    | 22.0 mm  |
+| CAL2           | CAL14           | 23.5 mm  |
+| CAL4           | CAL18           | 24.4 mm  |
+| CAL5           | CAL1            | 24.9 mm  |
+| Top of CAL5    | Top of CAL1     | 25.8 mm  |
+------------------------------------------------------------------------    
+- Run **1787058277** : **3 GeV beam, collimators at beam_ref, TARGET; YES, <GOAL: To investigate higher Z material - Tungsten(2cm) **
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **106972** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **4.001** bar, events **77952**, gas **CO2**
+    - XCET48: pressure **2.002** bar, events **5600**, gas **CO2**
+    - Run started: **18-Aug-2026 15:04:37**
+    - Run finished: **15:04:37 20:50**
+    - Number of events: **744709**
+ 
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: 3 cm
+    - **Observation**: no not working cal. 
+
+:::info 
+we have decided to take the target off and record a data in TDAQ and TimePix with the repeater method. We decided for 15 minutes of data taking, we will first start the TimePix and then TDAQ, and then we will give it to our poor students to correlate, good luck. first spill without tdaq. and we will also get the second SMA to BNC our goal is to also timestsamp the EVTTRG not just the CORBO we hope it will be helpful with the timeline analysis. Later update, we couldn't find SMA. 
+:::
+
+
+- Run **1787081424** : **3 GeV beam, collimators at beam_ref, TARGET; NO, <GOAL: to get background run with also TimePix to see if we can correlate the and to see how does the 3 GeV pos hadron beam looks with the TimePix.**
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **106972** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **4.001** bar, events **78639**, gas **CO2**
+    - XCET48: pressure **2.002** bar, events **5600**, gas **CO2**
+    - Run started: **18-Aug-2026 21:30:24**
+    - Run finished: **18-Aug-2026 21:53:30**
+    - Number of events: **69157**
+ 
+    - DESY Table position: ** H: 35.167, V:1.278 ###center of the calorimeters.
+    - CAL Gap Distance: 3 cm
+    - **Observation**: no not working cal. 
+    - **TimePix** from measurement_9 file to measurement_23 file there it belongs to this data without any target and with 3 GeV pos hadron beam. Total timestamps on the TimePix is 40095, less than the TDAQ of course, because TimePix was set to record for 15 minutes. **Important note** over here we only had GPIO2, and it was recording the CORBO on the falling edge.
+
+:::info
+we are trying to move the TimePix close to the target as much as possible. And we would like to start 1 cm tungsten target, however we are a bit scared in terms of temperature of the TimePix, it can be monitored on the TrackLab but we don't know if it has protection system. That is why we are also looking for some fan in the lab, hope to find out some solution.
+:::
+
+:::info
+we've findout a 12V fan, it looks good enough for leaving over night now.
+:::
+
+    
+    
+ 
+
+
+## 2026.08.17    
+ Continuation from last night:
+    
+
+   - Run **1786914869** : **3 GeV beam, collimators at beam_ref, TARGET; YES, <GOAL: repeating run from June BUT with 3 cm target**
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **111035** vents/spill
+    - Trigger rate from TDAQ: approx **<1200>** events/spill
+- XCET44: pressure **3.994** bar, events **78639**, gas **CO2**
+    - XCET48: pressure **1.999** bar, events **5887**, gas **CO2**
+    - Run started: **23:14:29, 16.08.2026**
+    - Run finished: **10:07:39,17.08.2026 **
+    - Number of events: **2011309**
+    - Target position: **50 cm**
+    - Target material thickness: **C / 30 mm**
+    - DESY Table position: ** H: 36.151, V:1.180 ###center of the calorimeters.
+    - **Observation**: During this long run, Channel10, CAL12, created same weird shape like before with CAL8, CAL0 and CAL1. We will do the calibration for the cal12 again at a lower voltage, this was too high we think.
+    
+    We are taking the measurement
+    
+    
+
+| From      | To        | Distance |
+| --------- | --------- | -------- |
+| DWC0 DS   | DWC1 US   | 98.2 cm  |
+| DWC1 US   | FS0 US    | 217.9 cm |
+| FS0 US    | FS1 US    | 3.24 cm  |
+| FS0 US    | FS0 DS    | 0.7 cm   |
+| FS1 US    | FS1 DS    | 0.6 cm   |
+| FS1 US    | Target US | 7.67 cm  |
+| Target US | Target DS | 3 cm     |
+| Target DS | CAL2 US   | 46.3 cm  | 
+
+
+:::info
+Changed the DESY tables position to (52.218, -13.079), and removed the target. Changed the beam to an electron beam. Changed the HV of Cal12 to 1500V and 445uA.
+:::
+    
+    - Run **1786960293** : **-3 GeV electron beam, collimators at beam_ref, TARGET; NO, <GOAL: Repeating our calibiration runs for Cal12**
+ - beamfile: **<002>**
+    - beam momentum: **<-3>** GeV
+    - Trigger Condition: **S0S1**
+    - Event rate from CESAR: approx **5221** vents/spill
+    - Trigger rate from TDAQ: approx **1600** events/spill
+    - XCET44: pressure **3.994** bar, events **5214**, gas **CO2**
+    - XCET48: pressure **1.999** bar, events **4987**, gas **CO2**
+    - Run started: **17.08.2026, 11:51:33**
+    - Run finished: **17.08.2026, 12:06:20**
+    - Number of events: **47k**
+    - DESY Table position: ** H: 52.218, V:-13.079
+   
+     - Run **1786961253** : **-2 GeV electron beam, collimators at beam_ref, TARGET; NO, <GOAL: Repeating our calibiration runs for Cal12**
+ - beamfile: **<001>**
+    - beam momentum: **<-2>** GeV
+    - Trigger Condition: **S0S1**
+    - Event rate from CESAR: approx **** vents/spill
+    - Trigger rate from TDAQ: approx **1600** events/spill
+    - XCET44: pressure **3.994** bar, events **5214**, gas **CO2**
+    - XCET48: pressure **1.999** bar, events **4987**, gas **CO2**
+    - Run started: **17.08.2026, 12:06:20**
+    - Run finished: **17.08.2026, 12:57:30**
+    - Number of events: **204k**
+    - DESY Table position: ** H: 52.218, V:-13.079
+    
+     - Run **1786964403** : **-1 GeV electron beam, collimators at beam_ref, TARGET; NO, <GOAL: Repeating our calibiration runs for Cal12**
+ - beamfile: **<000>**
+    - beam momentum: **<-1>** GeV
+    - Trigger Condition: **S0S1**
+    - Event rate from CESAR: approx **2166** vents/spill
+    - Trigger rate from TDAQ: approx **1600** events/spill
+    - XCET44: pressure **3.994** bar, events **2157**, gas **CO2**
+    - XCET48: pressure **1.999** bar, events **2155**, gas **CO2**
+    - Run started: **17.08.2026, 13:00:03**
+    - Run finished: **17.08.2026, 13:38:12 :**
+    - Number of events: **111836**
+    - DESY Table position: ** H: 52.218, V:-13.079
+**NOTE: We had issues with loading the beamfile although we tried it more than 4 times. And then, we called the PS control room, now we are waiting for our beamline physicist. It was because we have stayed inside so long that they took us out of the cycle :D** 
+    
+- Run **1786984559** : **+3 GeV positive hadron beam NO TARGET, background run **
+ - beamfile: **<008>**
+    - beam momentum: **<+3>** GeV
+    - Trigger Condition: **S0S1FS0FS1**
+    - Event rate from CESAR: approx **5221** vents/spill
+    - Trigger rate from TDAQ: approx **1200** events/spill
+:::danger
+it seems a bit low than our previous value, the fingers should be alligned again :D
+:::
+    - XCET44: pressure **3.994** bar, events **x**, gas **CO2**
+    - Run started: **17-Aug-2026 18:35:59**
+    - Run finished: **17-Aug-2026 20:22:00**
+    - Number of events: **311189**
+    - DESY Table position: **H: 35.344, V:1.340**
+:::info
+from here it doesn't seem like the beam is aligned with center.it seems to be more hitting to the cal14. either cal14 is not parallel to the beam and the beam hits later on, or if it is parallel it is just too close. we will repeat the alignment, which is also ncessary since the FS0 and FS1 is not as high as yesterday. 
+![](https://codimd.web.cern.ch/uploads/upload_ea53536ec41df76f56398454fa3b3960.png)
+:::
+
+:::info
+    
+we were able to connect to the TimePix in the zone. we will try to put it into the beam just for couple of spills while trying to as much as possible not hitting to the katherine box.
+:::
+    
+:::warning
+
+
+We have aligned the DWC, XBPF and markers again and again!! After making more precise alignment we figured out that beam is not going through from the gap between CALs but passing through CAL14 and CAL18. So, our plan to make sure we have equal gap between both towers. Difference between distance of upstream of desy table to right tower and left tower >7 mm, needs to be corrected as well.
+    
+
+    
+:::    
+    
+    
+## 2026.08.16
+    
+- Run **1786864539** : **-1 GeV BEAM, TRYING TO CALIBRATE CAL18**
+
+    - beamfile: **000**
+    - beam momentum: **-1** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **50107**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **2832** events/spill
+        - Trigger rate from TDAQ: approx **1400** events/spill
+        - XCET44: pressure **0.308** bar, events **132**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **2759**, gas **CO2**
+        - Run started: **2026-08-16 09:15 **
+        - Run finished: **2026-08-16 09:28 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:41.755**
+        - DESY table vertical position: **V:-3.388**
+
+    - **Observation**: CAL18 IS CENTERED AROUND  ~1000 QDC COUNT.
+   
+:::success
+CAL18 IS DONE YAYY :)
+:::
+   
+:::info
+we are doing CAL5 calibration again because the neighbour ECAL's
+    are showing high counts in QDC 
+    
+:::
+    
+- Run **1786865850** : **-1 GeV BEAM, TRYING TO CALIBRATE CAL5**
+
+    - beamfile: **000**
+    - beam momentum: **-1** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **59330**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **2691** events/spill
+        - Trigger rate from TDAQ: approx **1400** events/spill
+        - XCET44: pressure **0.308** bar, events **150**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **2638**, gas **CO2**
+        - Run started: **2026-08-16 09:37 **
+        - Run finished: **2026-08-16 09:52 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:41.755**
+        - DESY table vertical position: **V:-3.388**
+
+    - **Observation**: CAL5 IS CENTERED AROUND  ~697 QDC COUNT.
+    the left right mean is -1.37+/-25.43mm
+    the up down mean is -0.81 +/-23.82mm
+    
+- Run **1786866862** : **-2 GeV BEAM, TRYING TO CALIBRATE CAL5**
+
+    - beamfile: **001**
+    - beam momentum: **-2** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **55630**the version on disk (revert)?
+
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **4886** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **255**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **4717**, gas **CO2**
+        - Run started: **2026-08-16 09:54 **
+        - Run finished: **2026-08-16 10:05 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:41.755**
+        - DESY table vertical position: **V:-3.388**
+
+    - **Observation**: CAL5 IS CENTERED AROUND  ~1600 QDC COUNT.
+    the left right mean is -0.86 +/-21.94mm
+    the up down mean is -2.07 +/-20.26mm
+    
+- Run **1786867665** : **-3 GeV BEAM, TRYING TO CALIBRATE CAL5**
+
+    - beamfile: **002**
+    - beam momentum: **-3** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **52678**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **5229** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **262**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **4876**, gas **CO2**
+        - Run started: **2026-08-16 10:07 **
+        - Run finished: **2026-08-16 10:18 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:41.755**
+        - DESY table vertical position: **V:-3.388**
+
+    - **Observation**: CAL5 IS CENTERED AROUND  ~3015 QDC COUNT.
+    the left right mean is -0.36 +/-20.49mm
+    the up down mean is -1.81 +/-19.14mm
+
+:::success
+   CAL5 is done!!! :)
+:::
+    
+:::info
+we are callibrating CAL4 because there was no FS0 and FS1 off earlier 
+we are going to repeat the CAL4 with FS0 and FS1 included to the DAQ
+:::  
+
+- Run **1786868952** : **-3 GeV BEAM, TRYING TO CALIBRATE CAL4**
+
+    - beamfile: **002**
+    - beam momentum: **-3** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **51297**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **5502** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **232**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **5111**, gas **CO2**
+        - Run started: **2026-08-16 10:29 **
+        - Run finished: **2026-08-16 10:39 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:31.470**
+        - DESY table vertical position: **V:-3.696**
+
+    - **Observation**: CAL4 IS CENTERED AROUND  ~3119 QDC COUNT.
+    the left right mean is -0.35 +/-20.46mm
+    the up down mean is -1.84 +/-18.81mm  
+    
+- Run **1786868952** : **-2 GeV BEAM, TRYING TO CALIBRATE CAL4**
+
+    - beamfile: **001**
+    - beam momentum: **-2** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **53113**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **4897** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **258**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **4715**, gas **CO2**
+        - Run started: **2026-08-16 10:40 **
+        - Run finished: **2026-08-16 10:51 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:31.470**
+        - DESY table vertical position: **V:-3.696**
+
+    - **Observation**: CAL4 IS CENTERED AROUND  ~2107 QDC COUNT.
+    the left right mean is -0.92 +/-22.10mm
+    the up down mean is -1.49 +/-20.17mm     
+    
+    
+- Run **1786870373** : **-1 GeV BEAM, TRYING TO CALIBRATE CAL4**
+
+    - beamfile: **000**
+    - beam momentum: **-1** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **50544**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **5028** events/spill
+        - Trigger rate from TDAQ: approx **1400** events/spill
+        - XCET44: pressure **0.308** bar, events **261**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **4859**, gas **CO2**
+        - Run started: **2026-08-16 10:52 **
+        - Run finished: **2026-08-16 11:13 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:31.470**
+        - DESY table vertical position: **V:-3.696**
+
+    - **Observation**: CAL4 IS CENTERED AROUND  ~1112 QDC COUNT.
+    the left right mean is -1.65 +/-25.39mm
+    the up down mean is -0.22 +/-24.02mm
+    
+:::success
+CAL4 is done yayyyyyy!!   :) with the finger scintillators.
+:::
+    
+:::info
+Changed DESY table position from horizontal 31.470 and vertical -3.696 to horizontal 30.468 and vertical -3.696 to test the cluster algorithm by making a controlled change.
+:::
+
+    
+    - Run **1786872460** : **-3 GeV BEAM, TRYING TO TEST THE CLUSTERING CODE**
+
+    - beamfile: **002**
+    - beam momentum: **-3** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **34870**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **5414** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **239**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **5004**, gas **CO2**
+        - Run started: **2026-08-16 11:27 **
+        - Run finished: **2026-08-16 11:38 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:30.468**
+        - DESY table vertical position: **V:-3.696**
+
+    - **Observation**: CAL4 IS CENTERED AROUND  ~3.1K QDC COUNT.
+    the left right mean is -0.44 +/-20.43mm
+    the up down mean is -1.33 +/-19.31mm     
+ 
+:::info
+Changed DESY table position from horizontal 30.468 and vertical -3.696 to horizontal 29.467 and vertical -3.696 to test the cluster algorithm by making one more controlled change.
+:::
+
+    
+- Run **1786873403** : **-3 GeV BEAM, TRYING TO TEST THE CLUSTERING CODE**
+   
+    - beamfile: **002**
+    - beam momentum: **-3** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **35083**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **5450** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **246**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **5060**, gas **CO2**
+        - Run started: **2026-08-16 11:43 **
+        - Run finished: **2026-08-16 11:54 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:29.467**
+        - DESY table vertical position: **V:-3.696**
+
+    - **Observation**: CAL4 IS CENTERED AROUND  ~3150 QDC COUNT.
+    the left right mean is -0.73 +/-20.20mm
+    the up down mean is -2.01 +/-19.10mm    
+    
+
+:::info
+Changed DESY table position from horizontal 29.467 and vertical -3.696 to horizontal 28.465 and vertical -3.696 to test the cluster algorithm by making the third controlled change.
+:::
+
+ - Run **1786874231** : **-3 GeV BEAM, TRYING TO TEST THE CLUSTERING CODE**
+    
+    - beamfile: **002**
+    - beam momentum: **-3** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **143574**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **5450** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **246**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **5060**, gas **CO2**
+        - Run started: **2026-08-16 11:57:11 **
+        - Run finished: **2026-08-16 12:29:08 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:28.465**
+        - DESY table vertical position: **V:-3.696**
+
+    - **Observation**: CAL4 IS CENTERED AROUND  ~3100 QDC COUNT.
+    the left right mean is -0.73 +/-20.20mm
+    the up down mean is -2.01 +/-19.10mm   
+    
+:::info
+Changed DESY table position from horizontal 28.465 and vertical -3.696 to horizontal 27.463 and vertical -3.696 to test the cluster algorithm by making the fourth controlled change.
+:::
+
+ - Run **1786876505** : **-3 GeV BEAM, TRYING TO TEST THE CLUSTERING CODE**
+    
+    - beamfile: **002**
+    - beam momentum: **-3** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **35288**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **5450** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **246**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **5060**, gas **CO2**
+        - Run started: **2026-08-16  12:35:05 **
+        - Run finished: **2026-08-16 12:42:37 **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:27.463**
+        - DESY table vertical position: **V:-3.696**
+
+    - **Observation**: CAL4 IS CENTERED AROUND  ~3100 QDC COUNT.
+    the left right mean is -0.73 +/-20.20mm
+    the up down mean is -2.01 +/-19.10mm. 
+    
+:::danger 
+CAL1 IS AGAIN MAKING THAT AWKWARD SIGNAL AGAIN.
+![](https://codimd.web.cern.ch/uploads/upload_b4f207f21a02557b93da0d18c258943b.jpeg)
+WE NEED TO CHANGE THE CAL1 TO CH17.
+WE WENT INSIDE AND CHANGED CAL1 FROM CH1 TO CH17. LET'S REPEAT THE RUN.
+:::
+    
+ - Run **1786877233** : **-3 GeV BEAM, TRYING TO TEST THE CLUSTERING CODE, TRYING TO UNDERSTAND**
+    
+    - beamfile: **002**
+    - beam momentum: **-3** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **X**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **5450** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **246**, gas **CO2**
+        - XCET48: pressure **1.005** bar, events **5060**, gas **CO2**
+        - Run started: **2026-08-16  12:47:13**
+        - Run finished: **2026-08-16 X **
+
+    - **Calorimeters and DESY table**: 
+        - calorimeter gap: **NO GAP**
+        - DESY table horizontal position: **H:27.463**
+        - DESY table vertical position: **V:-3.696**
+:::danger
+during this run we've entered the zone to terminate ch0 and ch1 to understand what is going on with those channels.
+:::
+    - **Observation**: CAL4 IS CENTERED AROUND  ~3000 QDC COUNT.
+    the left right mean is -0.73 +/-20.20mm
+    the up down mean is -2.01 +/-19.10mm. Now the cal1-ch17 looks okay. but that means we need to repeat the cal1 calibration :(. 
+  
+run number: 1786878223 total: 110754 finish 16-Aug-2026 13:27:56.
+    
+:::danger
+    The ch0 and ch1 of QDC were reading unreasonably high values. So we discussed the possiblties such as high temperature and technical issues. We first tried to change the ch0 to ch16 and ch1 to ch17. As it didn't work we check the QDCs in the beam area. We removed the panel which is tought to be for holding dust and checked the temperatures of the inside of it which were normal. After leaving it open and leaving the beam area, we restarted the beam and the issue was fixed. Later we changed the ch17 back to ch1. 
+:::
+    
+- Run **1786882172** : **-3 GeV BEAM, TRYING TO TEST THE CLUSTERING CODE, TRYING TO UNDERSTAND HOW THE COUNTS OF NEIGBORING CALORIMETERS CHANGE WHEN THE BEAM HITS 1cm LOWER FROM THE CENTER OF CAL4**
+    
+    - beamfile: **002**
+    - beam momentum: **-3** GeV
+    - Trigger Condition: **S0S1**
+    - Number of events: **36781**
+
+
+    - **Initial look**:
+        - Event rate from CESAR: approx **4755** events/spill
+        - Trigger rate from TDAQ: approx **1800** events/spill
+        - XCET44: pressure **0.308** bar, events **219
