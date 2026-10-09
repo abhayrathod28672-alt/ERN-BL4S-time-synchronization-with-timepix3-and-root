@@ -1,0 +1,1051 @@
+"""=============================================================================
+ BL4S 2026  --  CERN PS East Area, T9 beam line
+ 3-D animation:   pi+  ->  target  ->  pi0  ->  two photons  ->  calorimeter
+=============================================================================
+
+WHAT THIS FILE IS
+-----------------
+One Manim scene, `BL4SBeamline`, that makes two passes over the same 3-D model:
+
+    ACT 1  "the run"   - the beam fires once, end to end, camera riding with it
+    ACT 2  "the tour"  - the camera flies to each detector and a caption box
+                         explains in two plain lines why it is there
+    ACT 3  "why"       - the motivation, one card, wide shot
+
+Everything is built from real dimensions in CENTIMETRES.  All of them live in
+the `G` dictionary below.  Change a number there and the model, the beam and
+every camera move follow automatically - you never touch the animation code to
+re-fit the scene to the real hardware.
+
+HOW TO RENDER
+-------------
+    pip install manim
+    manim -pql bl4s_t9_beamline.py BL4SBeamline     # draft    854x480  15 fps
+    manim -pqm bl4s_t9_beamline.py BL4SBeamline     # preview 1280x720  30 fps
+    manim -pqh bl4s_t9_beamline.py BL4SBeamline     # final   1920x1080 60 fps
+
+System packages on Garuda / Arch:
+    sudo pacman -S cairo pango ffmpeg
+No LaTeX is needed - every piece of text is a Pango `Text`, never `MathTex`.
+
+Running time: about 1 min 50 s.
+
+ONE NOTE ON THE CAMERA
+----------------------
+Manim's `frame_center` argument is applied twice by the Cairo 3-D camera, which
+throws the picture off screen.  So this scene never uses it.  Instead the camera
+stays at the origin and the whole model is translated underneath it by a
+ValueTracker (`PAN`).  That is what `self.off()` and `self.anchor()` are for.
+On screen the effect is identical to a moving camera, and zoom then always
+zooms about whatever the camera is currently pointing at.
+=============================================================================
+"""
+
+from manim import *
+import numpy as np
+import manimpango
+
+# -----------------------------------------------------------------------------
+# TYPEFACE
+# -----------------------------------------------------------------------------
+# Manim's default font kerns badly (you get "SCINTILL ATOR", "tw o") and falls
+# back to a sans-serif for Greek, so pi and gamma end up a different shape from
+# the words around them.  TeX Gyre Termes is the Times clone from the TeX world:
+# correct spacing and properly designed serif Greek, i.e. the look of a maths
+# video.  On Arch / Garuda:   sudo pacman -S tex-gyre-fonts
+# If none of these are installed the scene still renders, just with the default.
+_FONTS = set(manimpango.list_fonts())
+
+
+def _pick_font(*names):
+    for n in names:
+        if n in _FONTS:
+            return n
+    return ""
+
+
+UI_FONT = _pick_font("TeX Gyre Termes", "TeX Gyre Pagella", "Liberation Serif",
+                     "DejaVu Serif", "Times New Roman")
+
+
+def T(txt, size, color=WHITE, weight=NORMAL):
+    """ll on-screen text goes through here, so one font is used throughout."""
+    kw = dict(font_size=size, color=color, weight=weight)
+    if UI_FONT:
+        kw["font"] = UI_FONT
+    return Text(txt, **kw)
+
+
+# =============================================================================
+# 0.  SCALE
+# =============================================================================
+# The model is described in centimetres.  CM converts cm -> manim units.
+# The beam line is ~10 m long, so 0.017 puts it at ~17 units: a good wide shot.
+CM = 0.017
+
+
+def S(v):
+    """centimetres -> manim units"""
+    return v * CM
+
+
+def P(x_cm, y_cm=0.0, z_cm=0.0):
+    """a point given in centimetres -> a manim point"""
+    return np.array([S(x_cm), S(y_cm), S(z_cm)])
+
+
+# =============================================================================
+# 1.  COLOUR PALETTE      (cool dark hall, one warm accent for the physics)
+# =============================================================================
+BG_COLOR = "#05080F"
+
+FLOOR_C = "#0B121D"
+TABLE_C = "#586574"
+RAIL_C = "#6E7B8C"
+STAND_C = "#3C4551"
+
+TUBE_C = "#454C58"       # black anodised Cherenkov tubes (lifted so they read)
+FLANGE_C = "#5C6470"
+HV_LABEL = "#E3C11B"     # the yellow "DANGER High Voltage" stickers
+TIE_C = "#DDE4EC"        # cable ties
+
+DWC_BLUE = "#2C6591"     # blue delay-wire-chamber body
+KAPTON = "#E0A02A"       # amber kapton window
+
+SCINT_C = "#C6ECFF"      # plastic scintillator
+LGUIDE_C = "#9FD8F2"
+PMT_C = "#2F343C"
+
+TARGET_C = "#3B4046"     # graphite block
+PCB_C = "#0F5B4F"        # Timepix carrier board
+SILICON_C = "#93A4B8"
+LEADGLASS = "#79CFE6"
+FRAME_C = "#68727F"
+
+ACCENT = "#38BDF8"       # in-scene accent (aperture ring, highlight boxes)
+GOLD = "#FBBF24"         # energy deposits in the 3-D scene
+
+# on-screen caption boxes: white card, black text
+UI_BG = "#FFFFFF"
+UI_TEXT = "#14181D"
+UI_EDGE = "#9AA6B5"
+UI_HEAD = "#0B4F8F"      # dark blue headings
+UI_TAG = "#A15C00"       # dark amber for the step number
+WRAP_C = "#15181D"       # black light-tight wrapping on the scintillators
+
+# Act 2 shows the detector NAMES only.  Flip this to True and the two-line
+# explanation cards come back as well - the text for them is still in `stops`.
+SHOW_DESCRIPTIONS = False
+
+PI_C = "#FF7043"         # pi+
+E_C = "#4FC3F7"          # e+
+P_C = "#B388FF"          # protons
+MU_C = "#81C784"         # mu+
+GAMMA_C = "#FFE066"      # photons
+
+
+# =============================================================================
+# 2.  GEOMETRY  --  every number in centimetres, x measured along the beam
+# =============================================================================
+#   x = along the beam      y = horizontal, across the beam      z = vertical
+#   the beam axis is z = 0; the aluminium beam table sits below it
+# -----------------------------------------------------------------------------
+G = dict(
+    # --- concrete shielding wall with the beam aperture ----------------------
+    wall_x=-50.0, wall_t=50.0, wall_w=200.0, wall_h=160.0,
+    hole_w=26.0, hole_h=26.0,
+
+    # --- the T9 entrance sequence:  S0 -> C0 -> C1 -> S1 --------------------
+    #  Two threshold Cherenkov counters sit between two scintillation counters
+    #  at the entrance of the experimental area.
+    #  C0 = HIGH pressure -> fires for e / mu / pi
+    #  C1 = LOW  pressure -> fires for e / mu only
+    #  trigger  S0 . C0 . NOT C1 . S1  =  a clean pi+ tag
+    #  NOTE: the BL4S document does not quote the Cherenkov tube size; the
+    #  18 cm diameter below is read off your own photographs - measure it.
+    chk_r=12.0, chk_body=140.0, chk_cone=30.0, chk_snout=14.0, chk_snout_r=3.4,
+    s0_x=40.0,
+    c0_x=75.0,
+    c1_x=280.0,
+    s1_x=500.0,
+
+    # --- delay wire chambers -------------------------------------------------
+    #  sensitive area 10 x 10 cm, resolution 200-300 um (BL4S 2026)
+    dwc_win=13.0, dwc_w=34.0, dwc_h=34.0, dwc_t=10.0,
+    dwc0_x=545.0,
+    dwc1_x=592.0,
+
+    # --- scintillator sizes (1x1 cm up to 10x20 cm are available) -----------
+    sc_w=14.0, sc_h=14.0, sc_t=3.0,
+
+    # --- production target (solid block) -------------------------------------
+    tgt_x=642.0, tgt_t=8.0, tgt_w=14.0, tgt_h=14.0,
+
+    # --- Timepix3 pixel detector on its stand --------------------------------
+    #  the silicon sensor is 1.4 x 1.4 cm, 300 um thick
+    tpx_x=690.0, tpx_board=13.0, tpx_sensor=2.6,
+
+    # --- veto scintillators between target and calorimeter -------------------
+    s2_x=736.0,
+    s3_x=768.0,
+
+    # --- lead-glass calorimeter ----------------------------------------------
+    #  16 blocks, each 10 x 10 x 37 cm  (BL4S "Beams and detectors" 2026)
+    ecal_x=812.0, ecal_block=10.0, ecal_depth=37.0, ecal_gap=0.8,
+
+    # --- support furniture ---------------------------------------------------
+    table_z=-40.0, table_t=5.0, table_w=38.0,
+)
+
+# derived positions, so beam and camera always agree with the model
+X_ENTRY = G["wall_x"] + G["wall_t"]
+CHK_LEN = G["chk_body"] + G["chk_cone"] + G["chk_snout"]
+X_C0_END = G["c0_x"] + CHK_LEN
+X_C1_END = G["c1_x"] + CHK_LEN
+X_ECAL_FRONT = G["ecal_x"]
+X_ECAL_BACK = G["ecal_x"] + G["ecal_depth"]
+X_START = G["wall_x"] - 90.0
+X_END = X_ECAL_BACK + 40.0
+X_MID = 0.5 * (X_START + X_END)
+ECAL_PITCH = G["ecal_block"] + G["ecal_gap"]
+
+
+# =============================================================================
+# 3.  LOW-LEVEL SHAPE HELPERS
+# =============================================================================
+def cyl_x(x0, length, radius, color, opacity=1.0, res=(10, 18)):
+    """A cylinder whose axis lies along the beam, starting at x0."""
+    x0, L, R = S(x0), S(length), S(radius)
+    return Surface(
+        lambda u, v: np.array([x0 + L * u, R * np.cos(v), R * np.sin(v)]),
+        u_range=[0, 1], v_range=[0, TAU], resolution=res,
+        checkerboard_colors=False,
+        fill_color=color, fill_opacity=opacity,
+        stroke_width=0.8, stroke_color=color,
+    )
+
+
+def frustum_x(x0, length, r_start, r_end, color, opacity=1.0, res=(6, 18)):
+    """A cone or truncated cone along the beam axis - the Cherenkov snouts."""
+    x0, L = S(x0), S(length)
+    r0, r1 = S(r_start), S(r_end)
+    return Surface(
+        lambda u, v: np.array([
+            x0 + L * u,
+            (r0 + (r1 - r0) * u) * np.cos(v),
+            (r0 + (r1 - r0) * u) * np.sin(v),
+        ]),
+        u_range=[0, 1], v_range=[0, TAU], resolution=res,
+        checkerboard_colors=False,
+        fill_color=color, fill_opacity=opacity,
+        stroke_width=0.8, stroke_color=color,
+    )
+
+
+def disc_x(x, r_in, r_out, color, opacity=1.0, res=(2, 18)):
+    """A flat annulus facing along the beam - end caps and flanges."""
+    x = S(x)
+    ri, ro = S(r_in), S(r_out)
+    return Surface(
+        lambda u, v: np.array([
+            x,
+            (ri + (ro - ri) * u) * np.cos(v),
+            (ri + (ro - ri) * u) * np.sin(v),
+        ]),
+        u_range=[0, 1], v_range=[0, TAU], resolution=res,
+        checkerboard_colors=False,
+        fill_color=color, fill_opacity=opacity,
+        stroke_width=0.8, stroke_color=color,
+    )
+
+
+def box(cx, cy, cz, dx, dy, dz, color, opacity=1.0, stroke=0.7, stroke_c=None):
+    """An axis-aligned block centred at (cx, cy, cz).  All sizes in cm."""
+    b = Prism(dimensions=[S(dx), S(dy), S(dz)])
+    b.set_fill(color, opacity)
+    b.set_stroke(stroke_c if stroke_c else color, width=stroke, opacity=0.55)
+    b.move_to(P(cx, cy, cz))
+    return b
+
+
+def hollow_box(cx, cy, cz, dx, dy, dz, color=ACCENT):
+    """A translucent selection volume used to highlight one detector."""
+    b = Prism(dimensions=[S(dx), S(dy), S(dz)])
+    b.set_fill(color, 0.09)
+    b.set_stroke(color, width=2.2, opacity=0.95)
+    b.move_to(P(cx, cy, cz))
+    return b
+
+
+# =============================================================================
+# 4.  DETECTOR BUILDERS
+# =============================================================================
+def tiled_beam(x_from, x_to, y, z, dy, dz, color, opacity=1.0, stroke=0.6,
+               stroke_c=None, tile=45.0):
+    """
+    A long horizontal beam (table top, rail) cut into short tiles.
+
+    This matters: Manim's Cairo renderer sorts whole mobjects back-to-front by
+    the depth of their centre.  One 11-metre-long slab therefore sorts as if it
+    were all at its midpoint and ends up drawn on top of detectors that are
+    actually in front of it.  Cutting it into ~75 cm tiles makes the sort
+    correct everywhere along the line.
+    """
+    g = VGroup()
+    n = max(2, int(round((x_to - x_from) / tile)))
+    edges = np.linspace(x_from, x_to, n + 1)
+    for a, b in zip(edges[:-1], edges[1:]):
+        g.add(box((a + b) / 2, y, z, (b - a), dy, dz,
+                  color, opacity, stroke, stroke_c))
+    return g
+
+
+def tiled_slab(cx, cy, cz, dx, dy, dz, color, opacity=1.0, stroke=0.5,
+               stroke_c=None, cell=55.0):
+    """
+    A big slab (the shielding wall) cut into a grid of smaller blocks.
+
+    Same reason as `tiled_beam`: one slab two metres across sorts by its centre
+    alone, so half of it ends up drawn in front of detectors that are really
+    closer to the camera.  Cutting it into ~55 cm cells fixes the ordering.
+    """
+    g = VGroup()
+    ny = max(1, int(round(dy / cell)))
+    nz = max(1, int(round(dz / cell)))
+    ye = np.linspace(cy - dy / 2, cy + dy / 2, ny + 1)
+    ze = np.linspace(cz - dz / 2, cz + dz / 2, nz + 1)
+    for a, b in zip(ye[:-1], ye[1:]):
+        for c, d in zip(ze[:-1], ze[1:]):
+            g.add(box(cx, (a + b) / 2, (c + d) / 2,
+                      dx, (b - a) * 0.99, (d - c) * 0.99,
+                      color, opacity, stroke, stroke_c))
+    return g
+
+
+def build_hall():
+    """Aluminium beam table, the two rails and the table legs."""
+    x0, x1 = X_START - 30, X_END + 30
+
+    table = tiled_beam(x0, x1, 0, G["table_z"], G["table_w"], G["table_t"],
+                       TABLE_C, 1.0, 0.0)
+
+    rails = VGroup()
+    for sgn in (-1, 1):
+        rails.add(tiled_beam(x0 + 10, x1 - 10, sgn * 11, G["table_z"] + 5.5,
+                             6, 7, RAIL_C, 1.0, 0.0))
+
+    legs = VGroup()
+    for x in np.linspace(X_START + 90, X_END - 90, 6):
+        for sgn in (-1, 1):
+            legs.add(box(x, sgn * 12, G["table_z"] - 47, 5, 5, 90,
+                         STAND_C, 1.0, 0.4))
+
+    return VGroup(table, rails, legs)
+
+
+def build_wall():
+    """The shielding wall, built as four tiled slabs around a square aperture."""
+    wx = G["wall_x"] + G["wall_t"] / 2
+    t, W, H = G["wall_t"], G["wall_w"], G["wall_h"]
+    hw, hh = G["hole_w"], G["hole_h"]
+    c = "#28303C"
+
+    g = VGroup(
+        tiled_slab(wx, -(W / 4 + hw / 4), 0, t, W / 2 - hw / 2, H, c),
+        tiled_slab(wx, +(W / 4 + hw / 4), 0, t, W / 2 - hw / 2, H, c),
+        tiled_slab(wx, 0, +(H / 4 + hh / 4), t, hw, H / 2 - hh / 2, c),
+        tiled_slab(wx, 0, -(H / 4 + hh / 4), t, hw, H / 2 - hh / 2, c),
+    )
+    # a thin glowing frame around the aperture so the eye finds it at once
+    for dy, dz, sy, sz in [(hw / 2, 0, 1.4, hh + 1.4), (-hw / 2, 0, 1.4, hh + 1.4),
+                           (0, hh / 2, hw, 1.4), (0, -hh / 2, hw, 1.4)]:
+        g.add(box(G["wall_x"] + t, dy, dz, 1.2, sy, sz, ACCENT, 0.95, 0))
+    return g
+
+
+def build_cherenkov(x0):
+    """
+    A gas Cherenkov counter: long black tube, conical snout narrowing to a small
+    exit neck, the yellow HV sticker, a PMT housing and two cable ties.
+    """
+    r = G["chk_r"]
+    g = VGroup(
+        cyl_x(x0 - 4, 9, r * 1.14, FLANGE_C),                      # front flange
+        disc_x(x0 - 4, 0, r * 1.14, FLANGE_C),                     # front face
+        cyl_x(x0, G["chk_body"], r, TUBE_C),                       # body
+        frustum_x(x0 + G["chk_body"], G["chk_cone"], r,
+                  G["chk_snout_r"], TUBE_C),                       # cone
+        cyl_x(x0 + G["chk_body"] + G["chk_cone"], G["chk_snout"],
+              G["chk_snout_r"], TUBE_C),                           # neck
+        disc_x(x0 + CHK_LEN, 0, G["chk_snout_r"], FLANGE_C),       # neck face
+        box(x0 + 58, 0, r * 0.95, 40, 16, 0.9, HV_LABEL, 1.0, 0),  # HV sticker
+    )
+    pmt = cyl_x(x0 + 12, 26, 3.4, PMT_C)
+    pmt.rotate(PI / 2, axis=OUT, about_point=P(x0 + 12, 0, 0))
+    pmt.shift(P(0, 0, r * 0.5))
+    g.add(pmt)
+    for dx in (26, 100):
+        g.add(cyl_x(x0 + dx, 1.4, r * 1.06, TIE_C))
+    return g
+
+
+def build_dwc(x):
+    """Delay wire chamber: blue body, amber kapton windows, gas connectors."""
+    w, h, t, win = G["dwc_w"], G["dwc_h"], G["dwc_t"], G["dwc_win"]
+    g = VGroup(
+        box(x, 0, 0, t, w, h, DWC_BLUE, 1.0, 0.7, "#8FC6EA"),
+        box(x - t / 2 - 0.4, 0, 0, 0.8, win, win, KAPTON, 0.85, 0),
+        box(x + t / 2 + 0.4, 0, 0, 0.8, win, win, KAPTON, 0.85, 0),
+    )
+    for sgn in (-1, 1):
+        g.add(box(x, sgn * (w / 2 + 2), -h / 4, 3, 4, 3, "#C9D3DF", 1.0, 0))
+    g.add(box(x, 0, -(h / 2 + (abs(G["table_z"]) - h / 2) / 2),
+              5, 8, abs(G["table_z"]) - h / 2, STAND_C, 1.0, 0.4))
+    return g
+
+
+def build_scintillator(x, up=True):
+    """
+    A BL4S scintillation counter.
+
+    The plastic scintillator itself is clear, but it has to be light-tight, so
+    it is wrapped in black tape.  What you actually see in the beam area is a
+    square BLACK box with a photomultiplier tube sticking out of one side -
+    which is what this builds, rather than the bare plastic.
+    """
+    w, h, t = G["sc_w"], G["sc_h"], G["sc_t"]
+    cw, ch = w + 4.0, h + 4.0          # the wrapping stands a little proud
+    sgn = 1 if up else -1
+
+    g = VGroup(
+        box(x, 0, 0, t, cw, ch, WRAP_C, 1.0, 0.9, "#4A525C"),        # black case
+        box(x - t / 2 - 0.3, 0, 0, 0.5, w, h, SCINT_C, 0.28, 0),     # active area
+        # black light guide tapering out of one side of the case
+        box(x, sgn * (cw / 2 + 4.0), 0, t * 1.5, 8.0, ch * 0.55,
+            WRAP_C, 1.0, 0.6, "#3A4148"),
+    )
+
+    # the photomultiplier tube, lying across the beam
+    pmt = cyl_x(x, 26.0, 2.9, PMT_C)
+    pmt.rotate(sgn * PI / 2, axis=OUT, about_point=P(x, 0, 0))
+    pmt.shift(P(0, sgn * (cw / 2 + 8.0), 0))
+    g.add(pmt)
+
+    base = cyl_x(x, 4.0, 3.6, "#7E8792")                             # HV base
+    base.rotate(sgn * PI / 2, axis=OUT, about_point=P(x, 0, 0))
+    base.shift(P(0, sgn * (cw / 2 + 33.0), 0))
+    g.add(base)
+
+    g.add(box(x, 0, -(ch / 2 + (abs(G["table_z"]) - ch / 2) / 2),
+              5, 7, abs(G["table_z"]) - ch / 2, STAND_C, 1.0, 0.4))
+    return g
+
+
+def build_target():
+    """The production target: a solid block held in a small frame."""
+    x, t, w, h = G["tgt_x"], G["tgt_t"], G["tgt_w"], G["tgt_h"]
+    g = VGroup(box(x, 0, 0, t, w, h, TARGET_C, 1.0, 0.9, "#828A94"))
+    for sgn in (-1, 1):
+        g.add(box(x, sgn * (w / 2 + 1.5), 0, t + 2, 3, h + 6, "#8892A0", 1.0, 0.4))
+    g.add(box(x, 0, -(h / 2 + (abs(G["table_z"]) - h / 2) / 2),
+              6, 8, abs(G["table_z"]) - h / 2, STAND_C, 1.0, 0.4))
+    return g
+
+
+def build_timepix():
+    """Timepix3: a small silicon sensor on a carrier board, on a vertical stand."""
+    x, b = G["tpx_x"], G["tpx_board"]
+    return VGroup(
+        box(x, 0, 0, 0.6, b, b * 0.8, PCB_C, 1.0, 0.6, "#2FA893"),
+        box(x - 0.5, -b * 0.18, 0, 0.4, G["tpx_sensor"], G["tpx_sensor"],
+            SILICON_C, 1.0, 0.5, "#D6E2F0"),
+        box(x - 0.35, b * 0.16, 0, 0.2, 3.4, 2.0, "#F2F4F7", 1.0, 0),
+        box(x + 3.6, 0, -15, 5, 5, 36, "#20242B", 1.0, 0.5),
+        box(x + 3.6, 0, G["table_z"] + G["table_t"] / 2 + 1.5, 14, 14, 3,
+            "#20242B", 1.0, 0.5),
+    )
+
+
+def build_ecal():
+    """
+    The calorimeter: 16 lead-glass Cherenkov blocks in a 4 x 4 array, each with
+    a photomultiplier on its back face, held in a support frame.
+    Returns (group, {(row, col): glass_block}).
+    """
+    bs, dp = G["ecal_block"], G["ecal_depth"]
+    x0 = G["ecal_x"]
+    offs = [-1.5 * ECAL_PITCH, -0.5 * ECAL_PITCH,
+            0.5 * ECAL_PITCH, 1.5 * ECAL_PITCH]
+
+    blocks, grp = {}, VGroup()
+    for r in range(4):                    # r = 0 bottom .. 3 top   (z)
+        for c in range(4):                # c = 0 left   .. 3 right (y)
+            y, z = offs[c], offs[r]
+            glass = box(x0 + dp / 2, y, z, dp, bs, bs, LEADGLASS, 0.30,
+                        0.9, "#BEEBF7")
+            pmt = cyl_x(x0 + dp, 12, 3.0, PMT_C)
+            pmt.shift(P(0, y, z))
+            blocks[(r, c)] = glass
+            grp.add(glass, pmt)
+
+    span = 4 * ECAL_PITCH
+    for rim in (x0 + 3.0, x0 + dp - 3.0):          # front and back rim only
+        for sgn in (-1, 1):
+            grp.add(box(rim, sgn * (span / 2 + 2), 0, 6, 4, span + 8,
+                        FRAME_C, 1.0, 0.5))
+            grp.add(box(rim, 0, sgn * (span / 2 + 2), 6, span + 8, 4,
+                        FRAME_C, 1.0, 0.5))
+        grp.add(box(x0 + dp / 2, sgn * (span / 2 - 4),
+                    -(span / 2 + (abs(G["table_z"]) - span / 2) / 2),
+                    8, 6, abs(G["table_z"]) - span / 2, STAND_C, 1.0, 0.4))
+    return grp, blocks
+
+
+# =============================================================================
+# =============================================================================
+# 5.  THE BEAM  --  a bundle of rays, never a single line
+# =============================================================================
+RNG = np.random.default_rng(20260819)
+
+SPECIES = [("pi", PI_C, 0.58), ("e", E_C, 0.16),
+           ("p", P_C, 0.16), ("mu", MU_C, 0.10)]
+
+N_RAYS = 28
+BEAM_SIGMA = 1.0        # cm; BL4S quotes a round 2 cm beam spot at focus
+BEAM_DIV = 0.0016       # rad, angular divergence (the beam widens downstream)
+
+
+class Ray:
+    """One particle trajectory: a straight line with a small slope."""
+
+    def __init__(self, kind, color):
+        self.kind = kind
+        self.color = color
+        self.y0 = float(RNG.normal(0, BEAM_SIGMA))
+        self.z0 = float(RNG.normal(0, BEAM_SIGMA))
+        self.dy = float(RNG.normal(0, BEAM_DIV))
+        self.dz = float(RNG.normal(0, BEAM_DIV))
+
+    def at(self, x):
+        return P(x, self.y0 + self.dy * x, self.z0 + self.dz * x)
+
+
+def make_rays():
+    kinds = []
+    for name, col, frac in SPECIES:
+        kinds += [(name, col)] * int(round(frac * N_RAYS))
+    while len(kinds) < N_RAYS:
+        kinds.append(("pi", PI_C))
+    RNG.shuffle(kinds)
+    return [Ray(n, c) for n, c in kinds[:N_RAYS]]
+
+
+def track(p0, p1, color, width, opacity, kind):
+    """
+    One drawable track.  It remembers its own endpoints in design coordinates
+    (`p0`, `p1`) so that `grow` below can redraw it at any length and at any
+    pan offset without ever having to look at its current points.
+    """
+    ln = Line(p0, p1, color=color, stroke_width=width, stroke_opacity=opacity)
+    ln.p0, ln.p1, ln.op, ln.kind = np.array(p0), np.array(p1), opacity, kind
+    return ln
+
+
+def make_beam(rays, xa, xb, width=1.0, opacity=0.85):
+    """A bundle of beam tracks between two x positions, in design coordinates."""
+    return VGroup(*[track(r.at(xa), r.at(xb), r.color, width, opacity, r.kind)
+                    for r in rays])
+
+
+def draw_beam(seg, off, alpha):
+    """Redraw a segment at pan offset `off`, grown to fraction `alpha`."""
+    t = max(float(alpha), 0.004)
+    for ln in seg:
+        ln.set_points_as_corners([ln.p0 + off, ln.p0 + t * (ln.p1 - ln.p0) + off])
+        ln.set_stroke(opacity=0.0 if alpha < 0.01 else ln.op)
+
+
+def grow(seg, off_from, off_to):
+    """
+    The animation that fires the beam.  It sets the tracks' points from scratch
+    on every frame, from the ray geometry plus the interpolated pan offset, so
+    beam growth and camera movement can happen together without fighting over
+    the same points.  (`UpdateFromAlphaFunc` receives alpha after the rate
+    function, exactly like the world's shift animation, so the two stay locked.)
+    """
+    off_from, off_to = np.array(off_from), np.array(off_to)
+
+    def f(m, a):
+        draw_beam(m, off_from + (off_to - off_from) * a, a)
+
+    return UpdateFromAlphaFunc(seg, f)
+
+
+# =============================================================================
+# 6.  ON-SCREEN UI   (fixed in frame, so zoom never changes its size)
+# =============================================================================
+def caption(title, lines, number=None):
+    head = T(title, 27, UI_HEAD, BOLD)
+    if number is not None:
+        head = VGroup(T(number, 19, UI_TAG, BOLD),
+                      head).arrange(RIGHT, buff=0.22, aligned_edge=DOWN)
+    body = VGroup(*[T(t, 21, UI_TEXT) for t in lines])
+    body.arrange(DOWN, aligned_edge=LEFT, buff=0.19)
+    inner = VGroup(head, body).arrange(DOWN, aligned_edge=LEFT, buff=0.26)
+
+    frame = RoundedRectangle(
+        corner_radius=0.10, width=inner.width + 0.90, height=inner.height + 0.70,
+        fill_color=UI_BG, fill_opacity=0.97,
+        stroke_color=UI_EDGE, stroke_width=1.6).move_to(inner)
+    bar = Line(frame.get_corner(UL) + RIGHT * 0.05 + DOWN * 0.06,
+               frame.get_corner(DL) + RIGHT * 0.05 + UP * 0.06,
+               color=UI_HEAD, stroke_width=5)
+    return VGroup(frame, bar, inner).to_corner(DL, buff=0.42)
+
+
+def banner(text):
+    t = T(text, 22, UI_TEXT, BOLD)
+    bg = RoundedRectangle(corner_radius=0.08, width=t.width + 0.5,
+                          height=t.height + 0.32, fill_color=UI_BG,
+                          fill_opacity=0.95, stroke_color=UI_EDGE,
+                          stroke_width=1.4).move_to(t)
+    return VGroup(bg, t).to_corner(UL, buff=0.4)
+
+
+def legend():
+    rows = VGroup()
+    for name, col in [("\u03c0\u207a", PI_C), ("e\u207a", E_C), ("p", P_C),
+                      ("\u03bc\u207a", MU_C), ("\u03b3  photon", GAMMA_C)]:
+        rows.add(VGroup(Line(ORIGIN, RIGHT * 0.34, color=col, stroke_width=5),
+                        T(name, 18, UI_TEXT))
+                 .arrange(RIGHT, buff=0.16))
+    rows.arrange(DOWN, aligned_edge=LEFT, buff=0.10)
+    bg = RoundedRectangle(corner_radius=0.08, width=rows.width + 0.42,
+                          height=rows.height + 0.34, fill_color=UI_BG,
+                          fill_opacity=0.95, stroke_color=UI_EDGE,
+                          stroke_width=1.3).move_to(rows)
+    return VGroup(bg, rows).to_corner(UR, buff=0.4)
+
+
+def title_card(lines):
+    grp = VGroup(*[T(t, s, c, w) for t, s, c, w in lines]).arrange(DOWN, buff=0.30)
+    plate = RoundedRectangle(corner_radius=0.12, width=grp.width + 1.1,
+                             height=grp.height + 0.8, fill_color=UI_BG,
+                             fill_opacity=0.97, stroke_color=UI_EDGE,
+                             stroke_width=1.6).move_to(grp)
+    return VGroup(plate, grp)
+
+
+def label3d(text, x_cm, z_cm, size=22, color="#A8BACD", theta=-52 * DEGREES):
+    """Upright 3-D text standing in the hall, turned to face the camera."""
+    t = T(text, size, color, BOLD)
+    t.rotate(PI / 2, axis=RIGHT)
+    t.rotate(theta + PI / 2, axis=OUT)
+    t.move_to(P(x_cm, 0, z_cm))
+    return t
+
+
+# =============================================================================
+# 7.  THE SCENE
+# =============================================================================
+class BL4SBeamline(ThreeDScene):
+    """
+    Camera note
+    -----------
+    The camera never moves.  The whole model lives in one group, `self.world`,
+    which is translated so that whatever we want to look at sits at the origin;
+    zoom then always zooms about that point.  `self.pan` is the translation in
+    force at any moment, and `self.hold()` puts a freshly built mobject into the
+    current view.  Every move is an explicit animation - no updaters - so that
+    nothing depends on Manim's decision about when to refresh a mobject.
+    """
+
+    PHI = 68 * DEGREES
+    THETA = -52 * DEGREES
+
+    # ------------------------------------------------------------ camera rig
+    def hold(self, mob, into_world=False):
+        """Shift a mobject built in design coordinates into the current view."""
+        mob.shift(self.pan)
+        if into_world:
+            self.world.add(mob)
+        return mob
+
+    def fly_to(self, x_cm, zoom, z_cm=6.0, phi=None, run_time=1.5,
+               beam=None, extra=()):
+        """
+        Move the view to a place on the beam line.  If `beam` is given, that
+        segment grows from nothing to full length during the same move, so the
+        camera travels with the beam front.
+
+        `extra` must only hold animations of mobjects that are NOT inside
+        `self.world` - otherwise they fight the world's shift over the same
+        points and the mobject jumps back when the move ends.
+        """
+        old, new = self.pan, -P(x_cm, 0.0, z_cm)
+        self.pan = new
+        delta = new - old
+        anims = [self.world.animate.shift(delta), *extra]
+        if beam is not None:
+            anims.append(grow(beam, old, new))
+        # The name labels live outside `self.world` so that they can be scaled
+        # as well as moved: shrinking them by old_zoom/new_zoom keeps them the
+        # same size on screen whether we are 10 m back or right on the target.
+        f = self.zoom_now / zoom
+        self.zoom_now = zoom
+        for m in self.labels:
+            anims.append(m.animate.scale(f).shift(delta))
+        self.move_camera(zoom=zoom, phi=phi if phi is not None else self.PHI,
+                         run_time=run_time, added_anims=anims)
+        if beam is not None:
+            self.world.add(beam)
+
+    def fire(self, beam, run_time=1.0, rate_func=rate_functions.ease_in_sine):
+        """Grow a beam segment while the view stays where it is."""
+        self.play(grow(beam, self.pan, self.pan), run_time=run_time,
+                  rate_func=rate_func)
+        self.world.add(beam)
+
+    def arm(self, beam):
+        """Add a segment to the scene, invisible, ready to be fired."""
+        draw_beam(beam, self.pan, 0.0)
+        self.add(beam)
+        return beam
+
+    # ============================================================= construct
+    def construct(self):
+        self.camera.background_color = BG_COLOR
+
+        # ------------------------------------------------------ build model
+        hall = build_hall()
+        wall = build_wall()
+        s0 = build_scintillator(G["s0_x"], up=True)
+        c0 = build_cherenkov(G["c0_x"])
+        c1 = build_cherenkov(G["c1_x"])
+        s1 = build_scintillator(G["s1_x"], up=False)
+        dwc0 = build_dwc(G["dwc0_x"])
+        dwc1 = build_dwc(G["dwc1_x"])
+        target = build_target()
+        tpx = build_timepix()
+        s2 = build_scintillator(G["s2_x"], up=True)
+        s3 = build_scintillator(G["s3_x"], up=False)
+        ecal, blocks = build_ecal()
+
+        detectors = VGroup(wall, s0, c0, c1, s1, dwc0, dwc1,
+                           target, tpx, s2, s3, ecal)
+        self.world = VGroup(hall, detectors)
+
+        self.pan = -P(X_MID, 0.0, 10.0)
+        self.zoom_now = 0.50
+        self.labels = []
+        self.world.shift(self.pan)
+        self.set_camera_orientation(phi=self.PHI, theta=self.THETA,
+                                    zoom=0.50, focal_distance=60)
+
+        # floating detector names, carried along by the world
+        names = VGroup(*[label3d(t, x, z, size=sz, color=col, theta=self.THETA)
+                         for t, x, z, sz, col in [
+                             ("S0", G["s0_x"], 24, 22, "#A8BACD"),
+                             ("C0", G["c0_x"] + CHK_LEN / 2, 32, 24, "#A8BACD"),
+                             ("C1", G["c1_x"] + CHK_LEN / 2, 32, 24, "#A8BACD"),
+                             ("S1", G["s1_x"], -26, 22, "#A8BACD"),
+                             ("DWC0", G["dwc0_x"], 30, 22, "#A8BACD"),
+                             ("DWC1", G["dwc1_x"], 50, 22, "#A8BACD"),
+                             ("TARGET", G["tgt_x"], 24, 23, GOLD),
+                             ("Timepix3", G["tpx_x"], 52, 22, "#A8BACD"),
+                             ("S2", G["s2_x"], 26, 22, "#A8BACD"),
+                             ("S3", G["s3_x"], -26, 22, "#A8BACD"),
+                             ("ECAL  4 x 4", G["ecal_x"] + 20, 58, 24, "#A8BACD"),
+                         ]])
+        # sized so that they read the same at every zoom level (see fly_to)
+        for m in names:
+            m.scale(1.0 / self.zoom_now)
+        self.hold(names)
+        self.labels = list(names)
+        self.add(names)
+        names.set_opacity(0.0)
+
+        # =================================================================
+        # ACT 0  -  assemble the beam line, then the title card       ~7 s
+        # =================================================================
+        self.play(FadeIn(hall), run_time=0.8)
+        self.play(LaggedStart(*[FadeIn(m, shift=OUT * 0.12) for m in detectors],
+                              lag_ratio=0.11, run_time=2.4))
+
+        card = title_card([
+            ("BEAMLINE FOR SCHOOLS 2026", 42, UI_TEXT, BOLD),
+            ("CERN Proton Synchrotron   -   East Area   -   T9", 24, UI_HEAD, NORMAL),
+            ("Making and measuring the neutral pion", 21, "#3A4650", NORMAL),
+        ])
+        self.add_fixed_in_frame_mobjects(card)
+        self.play(FadeIn(card), run_time=0.8)
+        self.wait(1.7)
+        self.play(FadeOut(card), run_time=0.6)
+        self.remove_fixed_in_frame_mobjects(card)
+
+        # =================================================================
+        # ACT 1  -  one spill, end to end.  No explanations here: just the
+        #           detector names and the reaction.                 ~32 s
+        # =================================================================
+        rays = make_rays()
+        pions = [r for r in rays if r.kind == "pi"]
+
+        leg = legend()
+        self.add_fixed_in_frame_mobjects(leg)
+        self.play(FadeIn(leg), run_time=0.6)
+
+        seg_in = make_beam(rays, X_ENTRY - 1, G["s0_x"] + 8)
+        seg_c0 = make_beam(rays, G["s0_x"] + 8, X_C0_END + 6)
+        seg_c1 = make_beam(rays, X_C0_END + 6, X_C1_END + 6)
+        seg_dwc = make_beam(pions, X_C1_END + 6, G["dwc1_x"] + 10, width=1.1)
+        seg_tgt = make_beam(pions, G["dwc1_x"] + 10, G["tgt_x"], width=1.1)
+
+        # --- in through the hole, and across S0 ---------------------------
+        self.fly_to(G["s0_x"] + 10, zoom=1.60, run_time=1.6)
+        self.play(names.animate.set_opacity(1.0), run_time=0.5)
+        self.arm(seg_in)
+        self.fire(seg_in, run_time=1.0)
+        s0_hit = self.hold(box(G["s0_x"], 0, 0, 2.4, G["sc_w"], G["sc_h"],
+                               SCINT_C, 0.95, 0))
+        self.play(FadeIn(s0_hit), run_time=0.28)
+        self.play(FadeOut(s0_hit), run_time=0.32)
+
+        # --- through C0 ----------------------------------------------------
+        self.arm(seg_c0)
+        self.fly_to(G["c0_x"] + CHK_LEN / 2, zoom=1.10, run_time=1.9, beam=seg_c0)
+        glow0 = self.hold(cyl_x(G["c0_x"] + 18, G["chk_body"] - 26,
+                                G["chk_r"] * 0.72, ACCENT, opacity=0.34))
+        self.play(FadeIn(glow0), run_time=0.35)
+        self.play(FadeOut(glow0), run_time=0.45)
+
+        # --- through C1: it stays dark for pions, so only pions go on -------
+        self.arm(seg_c1)
+        self.fly_to(G["c1_x"] + CHK_LEN / 2, zoom=1.10, run_time=1.9, beam=seg_c1)
+        glow1 = self.hold(cyl_x(G["c1_x"] + 18, G["chk_body"] - 26,
+                                G["chk_r"] * 0.72, E_C, opacity=0.30))
+        self.play(FadeIn(glow1), run_time=0.35)
+        self.play(FadeOut(glow1), run_time=0.45)
+
+        rejected = VGroup(*[ln for sg in (seg_in, seg_c0, seg_c1)
+                            for ln in sg if ln.kind != "pi"])
+        self.play(rejected.animate.set_stroke(opacity=0.05), run_time=0.9)
+
+        # --- S1, then the two chambers --------------------------------------
+        self.arm(seg_dwc)
+        self.fly_to((G["s1_x"] + G["dwc1_x"]) / 2, zoom=1.70, z_cm=4,
+                    run_time=2.2, beam=seg_dwc)
+        hits = VGroup(
+            self.hold(box(G["s1_x"], 0, 0, 2.4, G["sc_w"], G["sc_h"],
+                          SCINT_C, 0.95, 0)),
+            self.hold(box(G["dwc0_x"], 0, 0, 1.3, G["dwc_win"], G["dwc_win"],
+                          ACCENT, 0.75, 0)),
+            self.hold(box(G["dwc1_x"], 0, 0, 1.3, G["dwc_win"], G["dwc_win"],
+                          ACCENT, 0.75, 0)),
+        )
+        self.play(LaggedStart(*[FadeIn(h) for h in hits],
+                              lag_ratio=0.25, run_time=0.9))
+        self.play(FadeOut(hits), run_time=0.5)
+
+        # --- into the target -------------------------------------------------
+        self.arm(seg_tgt)
+        self.fly_to(G["tgt_x"] + 22, zoom=3.20, z_cm=3, run_time=1.8, beam=seg_tgt)
+
+        # =================================================================
+        #  THE REACTION      pi+ + n  ->  pi0 + p ,   pi0  ->  gamma gamma
+        # =================================================================
+        flash = self.hold(Dot3D(P(G["tgt_x"]), radius=S(1.0), color=WHITE))
+        self.add(flash)
+        self.play(flash.animate.scale(6).set_opacity(0.0), run_time=0.5)
+        self.remove(flash)
+
+        # A ball carries its own name.  `sc` keeps that name the same size on
+        # screen as every other label, whatever the current zoom.
+        sc = 1.0 / self.zoom_now
+
+        def ball(x, y, z, r_cm, colour, txt, txt_colour):
+            b = Dot3D(P(x, y, z), radius=S(r_cm), color=colour)
+            lab = label3d(txt, 0, 0, size=30, color=txt_colour, theta=self.THETA)
+            lab.scale(sc).move_to(P(x, y, z))
+            return self.hold(VGroup(b, lab))
+
+        # a pi0 and a proton, born inside the beam where it meets the block
+        pi0 = ball(G["tgt_x"] + 11, -5, 10, 7.0, GOLD, "\u03c0\u2070", "#3A2600")
+        prot = ball(G["tgt_x"] + 10, 14, -10, 5.6, P_C, "p", "#FFFFFF")
+        self.add(pi0, prot)
+        self.play(FadeIn(pi0, scale=0.3), FadeIn(prot, scale=0.3), run_time=0.5)
+        self.wait(0.5)
+
+        # the two photons the pi0 turns into
+        src = P(G["tgt_x"] + 11, -5, 10)
+        aim1 = P(X_ECAL_FRONT + 14, -0.5 * ECAL_PITCH, 1.5 * ECAL_PITCH)
+        aim2 = P(X_ECAL_FRONT + 14, 1.5 * ECAL_PITCH, -0.5 * ECAL_PITCH)
+        photons = VGroup(track(src, aim1, GAMMA_C, 3.4, 0.95, "gamma"),
+                         track(src, aim2, GAMMA_C, 3.4, 0.95, "gamma"))
+        for r in pions[:6]:                      # pions that did not interact
+            photons.add(track(r.at(G["tgt_x"]),
+                              r.at(G["tgt_x"]) + P(X_ECAL_FRONT - G["tgt_x"],
+                                                   RNG.normal(0, 2.0),
+                                                   RNG.normal(0, 2.0)),
+                              PI_C, 1.1, 0.40, "pi"))
+        self.arm(photons)
+
+        # two labelled photon balls come out of the pi0 as it vanishes
+        g1 = ball(G["tgt_x"] + 11, -5, 10, 4.6, GAMMA_C, "\u03b3", "#3A2600")
+        g2 = ball(G["tgt_x"] + 11, -5, 10, 4.6, GAMMA_C, "\u03b3", "#3A2600")
+        g1.set_opacity(0.0)
+        g2.set_opacity(0.0)
+        self.add(g1, g2)
+        self.play(FadeOut(pi0, scale=2.2),
+                  g1.animate.set_opacity(1.0).shift(0.30 * (aim1 - src)),
+                  g2.animate.set_opacity(1.0).shift(0.30 * (aim2 - src)),
+                  grow(photons, self.pan, self.pan),
+                  run_time=1.1)
+        self.remove(pi0)
+        self.world.add(photons)                  # <- travels with the model now
+        self.play(FadeOut(g1), FadeOut(g2), run_time=0.5)
+        self.remove(g1, g2)
+
+        # the proton flies on and is absorbed by the Timepix
+        self.play(prot.animate.shift(P(G["tpx_x"] - G["tgt_x"] - 10, -14, 10)),
+                  run_time=1.0, rate_func=linear)
+        tpx_hit = self.hold(box(G["tpx_x"] - 1.0, 0, 0, 0.9, 7.0, 7.0, GOLD, 0.95, 0))
+        self.play(prot.animate.scale(0.06).set_opacity(0.0),
+                  FadeIn(tpx_hit), run_time=0.45)
+        self.play(FadeOut(tpx_hit), run_time=0.4)
+        self.remove(prot, tpx_hit)
+
+        # --- the photons reach the calorimeter -------------------------------
+        self.fly_to((G["tgt_x"] + X_ECAL_FRONT) / 2, zoom=1.55, z_cm=6,
+                    run_time=2.0)
+        self.play(blocks[(3, 1)].animate.set_fill(GOLD, 0.85),
+                  blocks[(1, 3)].animate.set_fill(GOLD, 0.85), run_time=0.9)
+
+        eq = title_card([
+            ("\u03c0\u207a  +  n     \u2192     \u03c0\u2070  +  p", 30, UI_TEXT, BOLD),
+            ("\u03c0\u2070     \u2192     \u03b3  +  \u03b3", 30, UI_HEAD, BOLD),
+            ("two photons, two blocks, one mass:  135 MeV", 18, "#3A4650", NORMAL),
+        ]).to_edge(DOWN, buff=0.6)
+        self.add_fixed_in_frame_mobjects(eq)
+        self.play(FadeIn(eq), run_time=0.6)
+        self.wait(2.2)
+
+        self.play(names.animate.set_opacity(0.0), run_time=0.4)
+        self.fly_to(X_MID, zoom=0.50, z_cm=10, phi=64 * DEGREES, run_time=2.2)
+        self.play(FadeOut(eq), run_time=0.5)
+        self.remove_fixed_in_frame_mobjects(eq)
+
+        # =================================================================
+        # ACT 2  -  the guided tour                                  ~58 s
+        # =================================================================
+        beam_all = VGroup(*[ln for sg in (seg_in, seg_c0, seg_c1, seg_dwc,
+                                          seg_tgt, photons) for ln in sg])
+
+        hud2 = banner("WHAT EACH DETECTOR DOES")
+        self.add_fixed_in_frame_mobjects(hud2)
+        self.play(FadeIn(hud2), beam_all.animate.set_stroke(opacity=0.18),
+                  run_time=1.0)
+
+        # (number, x centre, zoom, phi, highlight box, title, two lines, hold)
+        stops = [
+            ("01", X_ENTRY + 30, 1.45, 68,
+             (X_ENTRY - 8, 66, 56, 56),
+             "THE BEAM ARRIVES",
+             ["Protons from CERN's accelerator hit a target upstream and make",
+              "a mixed beam of particles, which reaches us through this hole."],
+             2.6),
+
+            ("02", G["s0_x"], 3.20, 68,
+             (G["s0_x"], 42, 46, 30),
+             "SCINTILLATOR   S0",
+             ["A black box of plastic that flashes when a particle crosses it.",
+              "It says: one particle has just entered the experiment."],
+             2.6),
+
+            ("03", (G["c0_x"] + X_C1_END) / 2, 1.00, 66,
+             ((G["c0_x"] + X_C1_END) / 2, X_C1_END - G["c0_x"] + 20, 26, 26),
+             "CHERENKOV COUNTERS   C0 and C1",
+             ["Gas-filled tubes. A particle fast enough makes a flash of light.",
+              "C0 flashes for pions and C1 does not: that picks out the pi+."],
+             3.2),
+
+            ("04", G["s1_x"], 3.20, 68,
+             (G["s1_x"], 42, 46, 30),
+             "SCINTILLATOR   S1",
+             ["The same kind of counter, at the far end of the two tubes.",
+              "S0 and S1 together confirm the particle went all the way through."],
+             2.8),
+
+            ("05", (G["dwc0_x"] + G["dwc1_x"]) / 2, 2.80, 68,
+             ((G["dwc0_x"] + G["dwc1_x"]) / 2, 80, 40, 40),
+             "DELAY WIRE CHAMBERS   DWC0 and DWC1",
+             ["Each chamber records where a particle crossed a 10 x 10 cm window,",
+              "to within 0.2 mm. Two points give the direction of every pion."],
+             3.0),
+
+            ("06", G["tgt_x"], 3.60, 66,
+             (G["tgt_x"], 24, 22, 22),
+             "THE TARGET",
+             ["A pion strikes the block:   pi+ + n  ->  pi0 + p.",
+              "The pi0 lives 10^-16 seconds, then becomes two photons."],
+             3.4),
+
+            ("07", G["tpx_x"], 3.60, 66,
+             (G["tpx_x"], 24, 22, 20),
+             "TIMEPIX3 PIXEL DETECTOR",
+             ["A silicon chip that photographs particles pixel by pixel.",
+              "This is where we catch the proton that came out of the target."],
+             3.0),
+
+            ("08", (G["s2_x"] + G["s3_x"]) / 2, 3.10, 68,
+             ((G["s2_x"] + G["s3_x"]) / 2, 58, 46, 30),
+             "SCINTILLATORS   S2 and S3",
+             ["These flash only if a charged particle leaves the target.",
+              "Photons are neutral, so silence here means a clean pair."],
+             2.9),
+
+            ("09", G["ecal_x"] + 18, 1.90, 64,
+             (G["ecal_x"] + G["ecal_depth"] / 2, G["ecal_depth"] + 6,
+              4 * ECAL_PITCH + 10, 4 * ECAL_PITCH + 10),
+             "LEAD-GLASS CALORIMETER   4 x 4",
+             ["Sixteen blocks of lead glass, each 10 x 10 x 37 cm. A photon stops",
+              "inside and makes light: that light measures its energy."],
+             3.2),
+        ]
+
+        for i, (num, xc, zm, ph, hb, title, lines, hold_t) in enumerate(stops):
+            cap = caption(title, lines, number=num)
+            self.fly_to(xc, zoom=zm, z_cm=6, phi=ph * DEGREES, run_time=1.5)
+            hx, hdx, hdy, hdz = hb
+            marker = self.hold(hollow_box(hx, 0, 0, hdx, hdy, hdz))
+            self.add_fixed_in_frame_mobjects(cap)
+            first = [names.animate.set_opacity(1.0)] if i == 0 else []
+            self.play(FadeIn(cap, shift=RIGHT * 0.25), FadeIn(marker),
+                      *first, run_time=0.55)
+            self.wait(hold_t)
+            self.play(FadeOut(cap), FadeOut(marker), run_time=0.4)
+            self.remove_fixed_in_frame_mobjects(cap)
+            self.remove(marker)
+
+        # =================================================================
+        # ACT 3  -  why it matters                                   ~10 s
+        # =================================================================
+        self.play(FadeOut(hud2), names.animate.set_opacity(0.0), run_time=0.6)
+        self.remove_fixed_in_frame_mobjects(hud2)
+
+        self.play(beam_all.animate.set_stroke(opacity=0.85), run_time=0.6)
+        self.fly_to(X_MID, zoom=0.50, z_cm=10, phi=70 * DEGREES, run_time=2.0)
+
+        outro = title_card([
+            ("Why the neutral pion matters", 31, UI_TEXT, BOLD),
+            ("A pi0 decaying into two photons is the main way a neutrino",
+             21, "#3A4650", NORMAL),
+            ("experiment can be fooled. Measuring it here helps DUNE",
+             21, "#3A4650", NORMAL),
+            ("tell a real signal from a fake one.", 21, "#3A4650", NORMAL),
+            ("Beamline for Schools 2026", 19, UI_HEAD, NORMAL),
+        ])
+        self.add_fixed_in_frame_mobjects(outro)
+        self.play(FadeIn(outro), run_time=0.8)
+        self.move_camera(theta=-66 * DEGREES, run_time=3.2)
+        self.play(FadeOut(outro), run_time=0.8)
+        self.wait(0.4)
